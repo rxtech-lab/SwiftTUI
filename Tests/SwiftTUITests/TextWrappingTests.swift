@@ -17,10 +17,10 @@ final class TextWrappingTests: XCTestCase {
 
     let size = Size(width: 6, height: 5)
     let (_, control) = try install(MyView(), size: size)
-    let rendered = render(control: control, size: size)
+    let lines = renderLines(control: control, size: size)
 
-    XCTAssertTrue(rendered.contains("Hello"))
-    XCTAssertTrue(rendered.contains("World"))
+    XCTAssertTrue(lines[0].contains("Hello"))
+    XCTAssertTrue(lines[1].contains("World"))
   }
 
   func test_textWraps_multipleWords() throws {
@@ -34,11 +34,11 @@ final class TextWrappingTests: XCTestCase {
 
     let size = Size(width: 7, height: 5)
     let (_, control) = try install(MyView(), size: size)
-    let rendered = render(control: control, size: size)
+    let lines = renderLines(control: control, size: size)
 
     // "one two" fits in width 7, "three" wraps to next line
-    XCTAssertTrue(rendered.contains("one two"))
-    XCTAssertTrue(rendered.contains("three"))
+    XCTAssertTrue(lines[0].contains("one two"))
+    XCTAssertTrue(lines[1].contains("three"))
   }
 
   func test_textWraps_atCharacterBoundary_whenWordTooLong() throws {
