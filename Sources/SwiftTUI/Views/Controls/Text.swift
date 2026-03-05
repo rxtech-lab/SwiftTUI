@@ -85,15 +85,44 @@ public struct Text: View, PrimitiveView {
         }
         
         override func size(proposedSize: Size) -> Size {
-            return Size(width: Extended(characterCount), height: 1)
+            let count = characterCount
+            guard count > 0 else {
+                return Size(width: 0, height: 1)
+            }
+            if proposedSize.width == .infinity || proposedSize.width >= Extended(count) {
+                return Size(width: Extended(count), height: 1)
+            }
+            let width = max(1, proposedSize.width.intValue)
+            let lines = computeWrappedLines(width: width)
+            let maxLineWidth = lines.map(\.length).max() ?? 0
+            return Size(width: Extended(maxLineWidth), height: Extended(lines.count))
         }
         
         override func cell(at position: Position) -> Cell? {
-            guard position.line == 0 else { return nil }
-            guard position.column < Extended(characterCount) else { return .init(char: " ") }
+            let count = characterCount
+            guard count > 0 else { return nil }
+            
+            let frameWidth = layer.frame.size.width
+            let lines: [WrappedLine]
+            
+            if frameWidth == .infinity || frameWidth >= Extended(count) {
+                lines = [WrappedLine(startOffset: 0, length: count)]
+            } else {
+                lines = computeWrappedLines(width: max(1, frameWidth.intValue))
+            }
+            
+            let lineIndex = position.line.intValue
+            guard lineIndex >= 0, lineIndex < lines.count else { return nil }
+            let wrappedLine = lines[lineIndex]
+            
+            let colIndex = position.column.intValue
+            guard colIndex >= 0, colIndex < wrappedLine.length else { return .init(char: " ") }
+            
+            let charIndex = wrappedLine.startOffset + colIndex
+            
             if #available(macOS 12, *), let attributedText {
                 let characters = attributedText.characters
-                let i = characters.index(characters.startIndex, offsetBy: position.column.intValue)
+                let i = characters.index(characters.startIndex, offsetBy: charIndex)
                 let char = attributedText[i ..< characters.index(after: i)]
                 let cellAttributes = CellAttributes(
                     bold: char.bold ?? bold,
@@ -117,12 +146,74 @@ public struct Text: View, PrimitiveView {
                     strikethrough: strikethrough
                 )
                 return Cell(
-                    char: text[text.index(text.startIndex, offsetBy: position.column.intValue)],
+                    char: text[text.index(text.startIndex, offsetBy: charIndex)],
                     foregroundColor: foregroundColor,
                     attributes: cellAttributes
                 )
             }
             return nil
+        }
+        
+        // MARK: - Text wrapping
+        
+        private struct WrappedLine {
+            let startOffset: Int
+            let length: Int
+        }
+        
+        private func computeWrappedLines(width: Int) -> [WrappedLine] {
+            let totalCount = characterCount
+            guard width > 0, totalCount > 0 else { return [] }
+            guard totalCount > width else {
+                return [WrappedLine(startOffset: 0, length: totalCount)]
+            }
+            
+            let chars = Array(textForWrapping)
+            var lines: [WrappedLine] = []
+            var lineStart = 0
+            
+            while lineStart < chars.count {
+                let remaining = chars.count - lineStart
+                if remaining <= width {
+                    lines.append(WrappedLine(startOffset: lineStart, length: remaining))
+                    break
+                }
+                
+                // Check if there's a space right at the width boundary
+                if chars[lineStart + width] == " " {
+                    lines.append(WrappedLine(startOffset: lineStart, length: width))
+                    lineStart += width + 1
+                    continue
+                }
+                
+                // Search backwards for a space within the line to break at word boundary
+                var spaceIndex: Int? = nil
+                for i in stride(from: lineStart + width - 1, through: lineStart, by: -1) {
+                    if chars[i] == " " {
+                        spaceIndex = i
+                        break
+                    }
+                }
+                
+                if let spaceIndex {
+                    lines.append(WrappedLine(startOffset: lineStart, length: spaceIndex - lineStart))
+                    lineStart = spaceIndex + 1
+                } else {
+                    // No space found, break at character boundary
+                    lines.append(WrappedLine(startOffset: lineStart, length: width))
+                    lineStart += width
+                }
+            }
+            
+            return lines
+        }
+        
+        private var textForWrapping: String {
+            if let text { return text }
+            if #available(macOS 12, *), let attributedText {
+                return String(attributedText.characters)
+            }
+            return ""
         }
         
         private var characterCount: Int {
