@@ -79,6 +79,122 @@ final class NavigationTests: XCTestCase {
     XCTAssertFalse(render(control: control, size: size).contains("Back"))
   }
 
+  // MARK: - NavigationPath tests
+
+  func test_navigationPath_appendAndCount() {
+    var path = NavigationPath()
+    XCTAssertTrue(path.isEmpty)
+    XCTAssertEqual(path.count, 0)
+
+    path.append(42)
+    XCTAssertEqual(path.count, 1)
+    XCTAssertFalse(path.isEmpty)
+
+    path.append("hello")
+    XCTAssertEqual(path.count, 2)
+
+    path.removeLast()
+    XCTAssertEqual(path.count, 1)
+
+    path.removeLast()
+    XCTAssertTrue(path.isEmpty)
+  }
+
+  func test_navigationPath_removeLastMultiple() {
+    var path = NavigationPath()
+    path.append(1)
+    path.append(2)
+    path.append(3)
+    path.removeLast(2)
+    XCTAssertEqual(path.count, 1)
+  }
+
+  // MARK: - Value-based NavigationLink + navigationDestination tests
+
+  func test_navigationLink_value_pushesViaNavigationDestination() throws {
+    let node = buildRootNode(
+      NavigationStack {
+        VStack {
+          NavigationLink("Go", value: 42)
+        }
+        .navigationDestination(for: Int.self) { value in
+          Text("Value: \(value)")
+        }
+      }
+    )
+
+    let (window, control) = try install(node: node, size: Size(width: 40, height: 8))
+
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: Size(width: 40, height: 8))
+
+    let rendered = render(control: control, size: Size(width: 40, height: 8))
+    XCTAssertTrue(rendered.contains("Value: 42"))
+  }
+
+  func test_navigationStack_pathBinding_push() throws {
+    struct PathTestView: View {
+      @State var path = NavigationPath()
+
+      var body: some View {
+        NavigationStack(path: $path) {
+          VStack {
+            NavigationLink("Go", value: 99)
+          }
+          .navigationDestination(for: Int.self) { value in
+            Text("Detail \(value)")
+          }
+        }
+      }
+    }
+
+    let node = buildRootNode(PathTestView())
+    let (window, control) = try install(node: node, size: Size(width: 40, height: 8))
+
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: Size(width: 40, height: 8))
+
+    let rendered = render(control: control, size: Size(width: 40, height: 8))
+    XCTAssertTrue(rendered.contains("Detail 99"))
+  }
+
+  func test_navigationStack_pathBinding_backPops() throws {
+    struct PathTestView: View {
+      @State var path = NavigationPath()
+
+      var body: some View {
+        NavigationStack(path: $path) {
+          VStack {
+            NavigationLink("Go", value: 1)
+          }
+          .navigationDestination(for: Int.self) { value in
+            Text("Detail \(value)")
+          }
+        }
+      }
+    }
+
+    let size = Size(width: 40, height: 8)
+    let node = buildRootNode(PathTestView())
+    let (window, control) = try install(node: node, size: size)
+
+    // Push
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+    XCTAssertTrue(render(control: control, size: size).contains("Detail 1"))
+
+    // Pop via back
+    moveDown(window: window, rootControl: control, size: size)
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let rendered = render(control: control, size: size)
+    XCTAssertTrue(rendered.contains("Go"))
+    XCTAssertFalse(rendered.contains("Detail"))
+  }
+
+  // MARK: - Existing tests
+
   func test_navigationSplitView_routesSidebarLinkToDetail() throws {
     let size = Size(width: 60, height: 10)
     let node = buildRootNode(
