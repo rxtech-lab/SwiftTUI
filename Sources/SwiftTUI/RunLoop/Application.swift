@@ -3,7 +3,7 @@ import Foundation
 import AppKit
 #endif
 
-public class Application {
+public class Application: @unchecked Sendable {
     private let node: Node
     private let window: Window
     private let control: Control
@@ -15,6 +15,7 @@ public class Application {
 
     private var invalidatedNodes: [Node] = []
     private var updateScheduled = false
+    private let updateQueue = DispatchQueue(label: "SwiftTUI.Application.UpdateQueue", target: .main)
 
     public init<I: View>(rootView: I, runLoopType: RunLoopType = .dispatch) {
         self.runLoopType = runLoopType
@@ -51,6 +52,7 @@ public class Application {
         #endif
     }
 
+    @MainActor
     public func start() {
         setInputMode()
         updateWindowSize()
@@ -140,7 +142,9 @@ public class Application {
 
     func scheduleUpdate() {
         if !updateScheduled {
-            DispatchQueue.main.async { self.update() }
+            updateQueue.async { [weak self] in
+                self?.update()
+            }
             updateScheduled = true
         }
     }
