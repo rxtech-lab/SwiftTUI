@@ -187,25 +187,21 @@ public struct Text: View, PrimitiveView {
                 }
                 
                 // Search backwards for a space within the line to break at word boundary
-                var breakAt: Int? = nil
+                var spaceIndex: Int? = nil
                 for i in stride(from: lineStart + width - 1, through: lineStart, by: -1) {
                     if chars[i] == " " {
-                        breakAt = i
+                        spaceIndex = i
                         break
                     }
                 }
                 
-                if let breakAt {
-                    lines.append(WrappedLine(startOffset: lineStart, length: breakAt - lineStart))
-                    lineStart = breakAt + 1
+                if let spaceIndex {
+                    lines.append(WrappedLine(startOffset: lineStart, length: spaceIndex - lineStart))
+                    lineStart = spaceIndex + 1
                 } else {
                     // No space found, break at character boundary
                     lines.append(WrappedLine(startOffset: lineStart, length: width))
                     lineStart += width
-                    // Skip leading spaces after character break
-                    while lineStart < chars.count && chars[lineStart] == " " {
-                        lineStart += 1
-                    }
                 }
             }
             
