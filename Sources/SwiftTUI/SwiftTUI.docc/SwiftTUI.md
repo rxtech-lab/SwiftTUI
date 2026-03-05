@@ -95,6 +95,8 @@ swift run
 ### View lifecycle
 
 - ``View/onAppear(_:)``
+- ``View/task(priority:_:)``
+- ``View/task(id:priority:_:)``
 
 ### Property wrappers
 
