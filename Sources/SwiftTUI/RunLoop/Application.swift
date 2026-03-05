@@ -51,7 +51,6 @@ public class Application: @unchecked Sendable {
     #endif
   }
 
-  @MainActor
   public func start() {
     setInputMode()
     updateWindowSize()
@@ -77,8 +76,10 @@ public class Application: @unchecked Sendable {
       dispatchMain()
     #if os(macOS)
       case .cocoa:
-        NSApplication.shared.setActivationPolicy(.accessory)
-        NSApplication.shared.run()
+        MainActor.assumeIsolated {
+          NSApplication.shared.setActivationPolicy(.accessory)
+          NSApplication.shared.run()
+        }
     #endif
     }
   }
