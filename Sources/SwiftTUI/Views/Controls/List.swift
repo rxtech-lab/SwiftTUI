@@ -88,6 +88,10 @@ public struct List<Content: View>: View, PrimitiveView, LayoutRootView {
   }
 
   private final class ListControl: Control {
+    override var toolbarHelpText: String? {
+      "↑/↓ Move • ←/→ Row • Enter Select"
+    }
+
     var rowCountProvider: (() -> Int)?
     var rowControlProvider: ((Int) -> Control)?
     var selectionGetter: (() -> AnyHashable?)?

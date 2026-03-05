@@ -18,7 +18,11 @@ Many features from SwiftUI are already working:
 ✓ Stacks, `.frame()`, `.padding()`, `GeometryReader`, `@ViewBuilder`, `ForEach`, `Group`<br>
 ✓ Structural identity like in SwiftUI<br>
 ✓ Scrollable lists with `ScrollView`<br>
+✓ `List` with selection binding, `ForEach`, and `.tag(...)` support<br>
 ✓ `Button`, `TextField` and moving focus with the arrow keys<br>
+✓ `NavigationStack`, `NavigationLink`, and `NavigationSplitView`<br>
+✓ `.toolbar`, `ToolbarItem`, and `ToolbarItemGroup` placements<br>
+✓ Automatic `List` keyboard help in toolbar with navigation back button support<br>
 ✓ `Color` with ANSI, xterm and TrueColor support<br>
 ✓ `Text` with bold, italic, underscore and strikethrough variants<br>
 ✓ `.onAppear()`, `.border()`, `.foregroundColor()`, `.backgroundColor`<br>
