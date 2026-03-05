@@ -45,7 +45,7 @@ private struct OnAppear<Content: View>: View, PrimitiveView, ModifierView {
             children[0].layout(size: size)
             if !didAppear {
                 didAppear = true
-                DispatchQueue.main.async { [action] in action() }
+                action()
             }
         }
     }

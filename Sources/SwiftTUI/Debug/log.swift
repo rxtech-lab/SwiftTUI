@@ -8,10 +8,9 @@ import Foundation
 /// tail -f /tmp/swift_tui_log
 /// ```
 public func log(_ item: Any, terminator: String = "\n") {
+    var logStream = LogStream()
     print(item, terminator: terminator, to: &logStream)
 }
-
-var logStream = LogStream()
 
 struct LogStream: TextOutputStream {
     func write(_ string: String) {
@@ -27,4 +26,3 @@ struct LogStream: TextOutputStream {
         }
     }
 }
-

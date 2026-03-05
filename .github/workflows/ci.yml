@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  macOS:
+    strategy:
+      matrix:
+        xcode: ["16.2"]
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Select Xcode ${{ matrix.xcode }}
+        run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Build Examples
+        run: ./scripts/build-examples.sh
+
+  linux:
+    runs-on: ubuntu-latest
+    container: swift:6.2
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Build Examples
+        run: ./scripts/build-examples.sh
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: compnerd/gha-setup-swift@main
+        with:
+          branch: swift-6.2-release
+          tag: 6.2-RELEASE
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Build Examples
+        shell: bash
+        run: ./scripts/build-examples.sh

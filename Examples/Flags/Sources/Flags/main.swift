@@ -1,3 +1,5 @@
 import SwiftTUI
 
-Application(rootView: ContentView()).start()
+await MainActor.run {
+    Application(rootView: ContentView()).start()
+}
