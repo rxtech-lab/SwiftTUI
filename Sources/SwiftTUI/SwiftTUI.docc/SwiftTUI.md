@@ -88,9 +88,23 @@ swift run
 ### Controls
 
 - ``ScrollView``
+- ``List``
 - ``Button``
 - ``TextField``
 - ``EnvironmentValues/placeholderColor``
+
+### Navigation
+
+- ``NavigationLink``
+- ``NavigationStack``
+- ``NavigationSplitView``
+
+### Toolbar
+
+- ``View/toolbar(_:)``
+- ``ToolbarItem``
+- ``ToolbarItemGroup``
+- ``ToolbarItemPlacement``
 
 ### View lifecycle
 

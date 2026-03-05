@@ -1,6 +1,6 @@
 # SwiftTUI
 
-![swift 5.6](https://user-images.githubusercontent.com/13484323/184016525-cb42a72c-1e2e-4d8d-8777-e7481386377c.svg)
+![swift 6.2](https://user-images.githubusercontent.com/13484323/184016525-cb42a72c-1e2e-4d8d-8777-e7481386377c.svg)
 ![platform macos](https://user-images.githubusercontent.com/13484323/184016156-817e14dc-24b5-4b46-a4d4-0de9391a37a4.svg)
 ![platform linux](https://user-images.githubusercontent.com/13484323/184016263-afa5dd0c-8d9a-4fba-91fe-23e892d64cca.svg)
 
@@ -18,7 +18,11 @@ Many features from SwiftUI are already working:
 ✓ Stacks, `.frame()`, `.padding()`, `GeometryReader`, `@ViewBuilder`, `ForEach`, `Group`<br>
 ✓ Structural identity like in SwiftUI<br>
 ✓ Scrollable lists with `ScrollView`<br>
+✓ `List` with selection binding, `ForEach`, and `.tag(...)` support<br>
 ✓ `Button`, `TextField` and moving focus with the arrow keys<br>
+✓ `NavigationStack`, `NavigationLink`, and `NavigationSplitView`<br>
+✓ `.toolbar`, `ToolbarItem`, and `ToolbarItemGroup` placements<br>
+✓ Automatic `List` keyboard help in toolbar with navigation back button support<br>
 ✓ `Color` with ANSI, xterm and TrueColor support<br>
 ✓ `Text` with bold, italic, underscore and strikethrough variants<br>
 ✓ `.onAppear()`, `.border()`, `.foregroundColor()`, `.backgroundColor`<br>

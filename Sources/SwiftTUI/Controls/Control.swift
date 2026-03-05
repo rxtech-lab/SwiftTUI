@@ -10,6 +10,8 @@ class Control: LayerDrawing {
 
   var window: Window?
   private(set) lazy var layer: Layer = makeLayer()
+  var selectionTag: AnyHashable?
+  var toolbarEntries: [ToolbarEntry] = []
 
   var root: Control { parent?.root ?? self }
 
@@ -103,11 +105,41 @@ class Control: LayerDrawing {
 
   func becomeFirstResponder() {
     scroll(to: .zero)
+    parent?.didBecomeFirstResponder(descendant: self)
   }
 
   func resignFirstResponder() {}
 
+  func didBecomeFirstResponder(descendant: Control) {
+    parent?.didBecomeFirstResponder(descendant: descendant)
+  }
+
   var isFirstResponder: Bool { root.window?.firstResponder === self }
+
+  // MARK: - Toolbar integration
+
+  /// Views can override this to provide contextual toolbar help text.
+  var toolbarHelpText: String? { nil }
+
+  func toolbarHelpTextInSubtree() -> String? {
+    if let toolbarHelpText {
+      return toolbarHelpText
+    }
+    for child in children {
+      if let help = child.toolbarHelpTextInSubtree() {
+        return help
+      }
+    }
+    return nil
+  }
+
+  func toolbarEntriesInSubtree() -> [ToolbarEntry] {
+    var entries = toolbarEntries
+    for child in children {
+      entries += child.toolbarEntriesInSubtree()
+    }
+    return entries
+  }
 
   // MARK: - Selection
 
@@ -138,6 +170,12 @@ class Control: LayerDrawing {
 
   func scroll(to position: Position) {
     parent?.scroll(to: position + layer.frame.position)
+  }
+
+  // MARK: - Navigation
+
+  func performBackAction() -> Bool {
+    parent?.performBackAction() ?? false
   }
 
 }

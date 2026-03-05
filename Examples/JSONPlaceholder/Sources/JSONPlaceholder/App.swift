@@ -1,5 +1,8 @@
 import SwiftTUI
 
-await MainActor.run {
+@main
+struct JSONPlaceholderApp {
+  static func main() {
     Application(rootView: ContentView()).start()
+  }
 }
