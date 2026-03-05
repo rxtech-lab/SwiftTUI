@@ -10,6 +10,7 @@ class Control: LayerDrawing {
 
   var window: Window?
   private(set) lazy var layer: Layer = makeLayer()
+  var selectionTag: AnyHashable?
 
   var root: Control { parent?.root ?? self }
 
@@ -103,9 +104,14 @@ class Control: LayerDrawing {
 
   func becomeFirstResponder() {
     scroll(to: .zero)
+    parent?.didBecomeFirstResponder(descendant: self)
   }
 
   func resignFirstResponder() {}
+
+  func didBecomeFirstResponder(descendant: Control) {
+    parent?.didBecomeFirstResponder(descendant: descendant)
+  }
 
   var isFirstResponder: Bool { root.window?.firstResponder === self }
 
