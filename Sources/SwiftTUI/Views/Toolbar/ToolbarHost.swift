@@ -126,8 +126,13 @@ private final class ToolbarHostControl: Control {
     return super.performBackAction()
   }
 
+  override func toolbarEntriesDidChange() {
+    rebuildToolbar()
+    layer.invalidate()
+  }
+
   private func rebuildToolbar() {
-    let customEntries = contentControl.toolbarEntriesInSubtree()
+    let customEntries = toolbarEntries + contentControl.toolbarEntriesInSubtree()
     let bucketed = bucketEntries(customEntries)
 
     let navigationControls: [Control]

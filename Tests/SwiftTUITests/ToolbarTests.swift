@@ -123,6 +123,74 @@ final class ToolbarTests: XCTestCase {
     XCTAssertTrue(rendered.contains("Status"))
   }
 
+  func test_navigationStackToolbar_visibleOnRootAndFirstPush() throws {
+    let size = Size(width: 80, height: 10)
+    let node = buildRootNode(
+      NavigationStack {
+        NavigationLink("Go", destination: Text("Detail"))
+      }
+      .toolbar {
+        ToolbarItem(placement: .status) {
+          Text("Sign Out")
+        }
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    let rootRendered = render(control: control, size: size)
+    XCTAssertTrue(rootRendered.contains("Sign Out"))
+
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let pushedRendered = render(control: control, size: size)
+    XCTAssertTrue(pushedRendered.contains("Detail"))
+    XCTAssertTrue(pushedRendered.contains("Sign Out"))
+  }
+
+  func test_navigationStackToolbar_visibleOnNestedSubpage_sameStackDepth() throws {
+    struct DetailView: View {
+      var body: some View {
+        NavigationLink("Next", destination: Text("Subdetail"))
+      }
+    }
+
+    let size = Size(width: 80, height: 10)
+    let node = buildRootNode(
+      NavigationStack {
+        NavigationLink("Go", destination: DetailView())
+      }
+      .toolbar {
+        ToolbarItem(placement: .status) {
+          Text("Sign Out")
+        }
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    let rootRendered = render(control: control, size: size)
+    XCTAssertTrue(rootRendered.contains("Sign Out"))
+
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let detailRendered = render(control: control, size: size)
+    XCTAssertTrue(detailRendered.contains("Next"))
+    XCTAssertTrue(detailRendered.contains("Sign Out"))
+
+    window.firstResponder?.resignFirstResponder()
+    window.firstResponder = control.firstSelectableElement
+    window.firstResponder?.becomeFirstResponder()
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let subdetailRendered = render(control: control, size: size)
+    XCTAssertTrue(subdetailRendered.contains("Subdetail"))
+    XCTAssertTrue(subdetailRendered.contains("Sign Out"))
+  }
+
   private func buildRootNode<V: View>(_ view: V) -> Node {
     let node = Node(view: VStack(content: view).view)
     node.build()

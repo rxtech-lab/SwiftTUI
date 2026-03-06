@@ -13,5 +13,10 @@ struct ContentView: View {
           CommentDetailView(comment: comment)
         }
     }
+    .toolbar {
+      ToolbarItem(placement: .status) {
+        Text("JSONPlaceholder")
+      }
+    }
   }
 }

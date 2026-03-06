@@ -28,6 +28,11 @@ struct PostDetailView: View {
         }
       }
     }
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Text("Post #\(post.id)")
+      }
+    }
     .task {
       do {
         let fetched = try await APIClient.fetchComments(postId: post.id)
