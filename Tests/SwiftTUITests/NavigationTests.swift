@@ -82,6 +82,74 @@ final class NavigationTests: XCTestCase {
     XCTAssertFalse(render(control: control, size: size).contains("Back"))
   }
 
+  func test_backButton_reachableWhenNoOtherSelectableElement() throws {
+    let size = Size(width: 40, height: 8)
+    let node = buildRootNode(
+      NavigationStack {
+        NavigationLink("Go", destination: Text("Detail"))
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    // Push to detail (only Text, no buttons)
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    // firstResponder should be nil since detail has no focusable content
+    XCTAssertNil(window.firstResponder)
+    XCTAssertTrue(render(control: control, size: size).contains("Back"))
+
+    // Simulate arrow key when firstResponder is nil — should find back button
+    let backButton = control.firstSelectableElement
+    XCTAssertNotNil(backButton)
+    window.firstResponder = backButton
+    backButton?.becomeFirstResponder()
+
+    // Back button is now focused and can be activated
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let rendered = render(control: control, size: size)
+    XCTAssertTrue(rendered.contains("Go"))
+    XCTAssertFalse(rendered.contains("Back"))
+  }
+
+  func test_escPopsBack_whenNoSelectableContentInDetail() throws {
+    let size = Size(width: 40, height: 8)
+    let node = buildRootNode(
+      NavigationStack {
+        NavigationLink("Go", destination: Text("Detail"))
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    // Push to text-only detail
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    XCTAssertNil(window.firstResponder)
+    XCTAssertTrue(render(control: control, size: size).contains("Detail"))
+
+    // Simulate ESC back action (same fallback as Application.performBackAction):
+    // when firstResponder is nil, find a selectable element and walk up from it.
+    let didPop: Bool
+    if window.firstResponder?.performBackAction() == true {
+      didPop = true
+    } else if let selectable = control.firstSelectableElement {
+      didPop = selectable.performBackAction()
+    } else {
+      didPop = false
+    }
+    XCTAssertTrue(didPop)
+    update(node: node, control: control, size: size)
+
+    let rendered = render(control: control, size: size)
+    XCTAssertTrue(rendered.contains("Go"))
+    XCTAssertFalse(rendered.contains("Back"))
+  }
+
   // MARK: - NavigationPath tests
 
   func test_navigationPath_appendAndCount() {
@@ -291,6 +359,48 @@ final class NavigationTests: XCTestCase {
     XCTAssertTrue(rendered2.contains("String: hello"), "After second push. Got: \(rendered2)")
   }
 
+  // MARK: - Nested NavigationStack tests
+
+  func test_nested_navigationStack_no_crash_on_inner_push() throws {
+    // Regression: pushing inside a nested NavigationStack used to crash with
+    // "Attempting to modify @State variable before view is instantiated"
+    // because firstResponder pointed to a stale (removed) control whose
+    // @State node had been deallocated.
+    struct InnerView: View {
+      var body: some View {
+        NavigationStack {
+          NavigationLink("Deep", destination: Text("Deep detail"))
+        }
+      }
+    }
+
+    let size = Size(width: 40, height: 8)
+    let node = buildRootNode(
+      NavigationStack {
+        NavigationLink(destination: InnerView()) {
+          Text("Go")
+        }
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    // Push to inner view
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size, window: window)
+
+    let rendered1 = render(control: control, size: size)
+    XCTAssertTrue(rendered1.contains("Deep"), "Should show inner nav content. Got: \(rendered1)")
+
+    // Push inside the inner NavigationStack — this used to crash
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size, window: window)
+
+    let rendered2 = render(control: control, size: size)
+    XCTAssertTrue(
+      rendered2.contains("Deep detail"), "Should show deep detail. Got: \(rendered2)")
+  }
+
   // MARK: - Existing tests
 
   func test_navigationSplitView_routesSidebarLinkToDetail() throws {
@@ -330,8 +440,17 @@ final class NavigationTests: XCTestCase {
     return (window, control)
   }
 
-  private func update(node: Node, control: Control, size: Size) {
+  private func update(node: Node, control: Control, size: Size, window: Window? = nil) {
     node.update(using: node.view)
+    // Mirror Application.update(): clear stale firstResponder after tree rebuild
+    if let window, let fr = window.firstResponder, fr.root !== control {
+      fr.resignFirstResponder()
+      window.firstResponder = nil
+    }
+    if let window, window.firstResponder == nil {
+      window.firstResponder = control.firstDefaultFocusElement
+      window.firstResponder?.becomeFirstResponder()
+    }
     control.layout(size: size)
   }
 

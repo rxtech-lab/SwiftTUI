@@ -141,15 +141,19 @@ public class Application: @unchecked Sendable {
 
   private func moveFocus(for key: ArrowKeyParser.ArrowKey) {
     let nextResponder: Control?
-    switch key {
-    case .down:
-      nextResponder = window.firstResponder?.selectableElement(below: 0)
-    case .up:
-      nextResponder = window.firstResponder?.selectableElement(above: 0)
-    case .right:
-      nextResponder = window.firstResponder?.selectableElement(rightOf: 0)
-    case .left:
-      nextResponder = window.firstResponder?.selectableElement(leftOf: 0)
+    if let current = window.firstResponder {
+      switch key {
+      case .down:
+        nextResponder = current.selectableElement(below: 0)
+      case .up:
+        nextResponder = current.selectableElement(above: 0)
+      case .right:
+        nextResponder = current.selectableElement(rightOf: 0)
+      case .left:
+        nextResponder = current.selectableElement(leftOf: 0)
+      }
+    } else {
+      nextResponder = control.firstSelectableElement
     }
 
     guard let nextResponder else { return }
@@ -161,6 +165,14 @@ public class Application: @unchecked Sendable {
 
   private func performBackAction() -> Bool {
     if window.firstResponder?.performBackAction() == true {
+      return true
+    }
+    // When firstResponder is nil (e.g. text-only detail page), find any
+    // selectable element and walk up from there to reach the back handler.
+    if window.firstResponder == nil,
+      let selectable = control.firstSelectableElement,
+      selectable.performBackAction()
+    {
       return true
     }
     return control.performBackAction()
@@ -187,6 +199,18 @@ public class Application: @unchecked Sendable {
       node.update(using: node.view)
     }
     invalidatedNodes = []
+
+    // After tree updates, the firstResponder may point to a control that was
+    // removed from the tree (stale). Detect this and pick a new one to avoid
+    // crashes when the stale control's closures reference deallocated nodes.
+    if let fr = window.firstResponder, fr.root !== control {
+      fr.resignFirstResponder()
+      window.firstResponder = nil
+    }
+    if window.firstResponder == nil {
+      window.firstResponder = control.firstDefaultFocusElement
+      window.firstResponder?.becomeFirstResponder()
+    }
 
     control.layout(size: window.layer.frame.size)
     renderer.update()
