@@ -11,6 +11,7 @@ class Control: LayerDrawing {
   var window: Window?
   private(set) lazy var layer: Layer = makeLayer()
   var selectionTag: AnyHashable?
+  var prefersDefaultFocus: Bool = true
   var toolbarEntries: [ToolbarEntry] = []
 
   var root: Control { parent?.root ?? self }
@@ -24,7 +25,7 @@ class Control: LayerDrawing {
       children[i].index = i
     }
     if let window = root.window, window.firstResponder == nil {
-      if let responder = view.firstSelectableElement {
+      if let responder = view.firstDefaultFocusElement {
         window.firstResponder = responder
         responder.becomeFirstResponder()
       }
@@ -149,6 +150,14 @@ class Control: LayerDrawing {
     if selectable { return self }
     for control in children {
       if let element = control.firstSelectableElement { return element }
+    }
+    return nil
+  }
+
+  var firstDefaultFocusElement: Control? {
+    if selectable && prefersDefaultFocus { return self }
+    for control in children {
+      if let element = control.firstDefaultFocusElement { return element }
     }
     return nil
   }

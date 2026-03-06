@@ -100,6 +100,10 @@ private final class ToolbarHostControl: Control {
     toolbarRowControl.layer.frame.position = Position(column: 0, line: contentHeight)
   }
 
+  override var firstDefaultFocusElement: Control? {
+    contentControl.firstDefaultFocusElement
+  }
+
   override func selectableElement(below index: Int) -> Control? {
     if index == 0 {
       return toolbarRowControl.firstSelectableElement ?? super.selectableElement(below: index)
@@ -130,16 +134,16 @@ private final class ToolbarHostControl: Control {
     if let customNavigation = bucketed[.navigation], !customNavigation.isEmpty {
       navigationControls = customNavigation.map(buildControl)
     } else if showBackButton {
-      navigationControls = [
-        ToolbarButtonControl(
-          text: "Back",
-          action: { [weak self] in
-            guard let self else { return }
-            if self.onBack?() == true {
-              self.layer.invalidate()
-            }
-          })
-      ]
+      let backButton = ToolbarButtonControl(
+        text: "Back",
+        action: { [weak self] in
+          guard let self else { return }
+          if self.onBack?() == true {
+            self.layer.invalidate()
+          }
+        })
+      backButton.prefersDefaultFocus = false
+      navigationControls = [backButton]
     } else {
       navigationControls = []
     }

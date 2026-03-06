@@ -50,7 +50,8 @@ final class NavigationTests: XCTestCase {
     window.firstResponder?.handleEvent("\n")
     update(node: node, control: control, size: size)
 
-    moveDown(window: window, rootControl: control, size: size)
+    // Back button does not auto-focus; navigate down to reach it
+    focusBackButton(window: window, rootControl: control, size: size)
     window.firstResponder?.handleEvent("\n")
     update(node: node, control: control, size: size)
 
@@ -72,7 +73,9 @@ final class NavigationTests: XCTestCase {
     window.firstResponder?.handleEvent("\n")
     update(node: node, control: control, size: size)
 
-    XCTAssertTrue(window.firstResponder?.performBackAction() == true)
+    // Back button doesn't auto-focus; find it and use performBackAction from there
+    let backButton = control.firstSelectableElement
+    XCTAssertTrue(backButton?.performBackAction() == true)
     update(node: node, control: control, size: size)
 
     XCTAssertTrue(render(control: control, size: size).contains("Go"))
@@ -183,8 +186,8 @@ final class NavigationTests: XCTestCase {
     update(node: node, control: control, size: size)
     XCTAssertTrue(render(control: control, size: size).contains("Detail 1"))
 
-    // Pop via back
-    moveDown(window: window, rootControl: control, size: size)
+    // Pop via back — back button does not auto-focus; navigate to it
+    focusBackButton(window: window, rootControl: control, size: size)
     window.firstResponder?.handleEvent("\n")
     update(node: node, control: control, size: size)
 
@@ -228,8 +231,8 @@ final class NavigationTests: XCTestCase {
     let rendered1 = render(control: control, size: size)
     XCTAssertTrue(rendered1.contains("Int: 1"), "Should show Int detail. Got: \(rendered1)")
 
-    // Focus lands on Back button after push; content is above toolbar
-    moveUp(window: window, rootControl: control, size: size)
+    // Focus lands on NavigationLink in content after push
+    // (back button does not auto-focus)
 
     // Second navigation: push String value
     window.firstResponder?.handleEvent("\n")
@@ -330,6 +333,22 @@ final class NavigationTests: XCTestCase {
   private func update(node: Node, control: Control, size: Size) {
     node.update(using: node.view)
     control.layout(size: size)
+  }
+
+  private func focusBackButton(window: Window, rootControl: Control, size: Size) {
+    // When firstResponder is nil (e.g. detail has no selectable content),
+    // find the back button via firstSelectableElement on the root.
+    let target: Control?
+    if let responder = window.firstResponder {
+      target = responder.selectableElement(below: 0)
+    } else {
+      target = rootControl.firstSelectableElement
+    }
+    guard let target else { return }
+    window.firstResponder?.resignFirstResponder()
+    window.firstResponder = target
+    target.becomeFirstResponder()
+    rootControl.layout(size: size)
   }
 
   private func moveDown(window: Window, rootControl: Control, size: Size) {
