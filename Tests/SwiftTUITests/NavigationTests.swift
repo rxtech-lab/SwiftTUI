@@ -193,6 +193,101 @@ final class NavigationTests: XCTestCase {
     XCTAssertFalse(rendered.contains("Detail"))
   }
 
+  // MARK: - Nested navigation tests
+
+  func test_nested_navigation_value_push() throws {
+    struct NestedNavView: View {
+      @State var path = NavigationPath()
+
+      var body: some View {
+        NavigationStack(path: $path) {
+          VStack {
+            NavigationLink("Go", value: 1)
+          }
+          .navigationDestination(for: Int.self) { value in
+            VStack {
+              Text("Int: \(value)")
+              NavigationLink("Next", value: "hello")
+            }
+          }
+          .navigationDestination(for: String.self) { str in
+            Text("String: \(str)")
+          }
+        }
+      }
+    }
+
+    let size = Size(width: 40, height: 8)
+    let node = buildRootNode(NestedNavView())
+    let (window, control) = try install(node: node, size: size)
+
+    // First navigation: push Int value
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let rendered1 = render(control: control, size: size)
+    XCTAssertTrue(rendered1.contains("Int: 1"), "Should show Int detail. Got: \(rendered1)")
+
+    // Focus lands on Back button after push; content is above toolbar
+    moveUp(window: window, rootControl: control, size: size)
+
+    // Second navigation: push String value
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    let rendered2 = render(control: control, size: size)
+    XCTAssertTrue(
+      rendered2.contains("String: hello"), "Should show String detail. Got: \(rendered2)")
+  }
+
+  func test_nested_navigation_direct_path_push() throws {
+    struct NestedNavView: View {
+      @State var path = NavigationPath()
+
+      var body: some View {
+        NavigationStack(path: $path) {
+          VStack {
+            NavigationLink("Go", value: 1)
+          }
+          .navigationDestination(for: Int.self) { value in
+            VStack {
+              Text("Int: \(value)")
+              NavigationLink("Next", value: "hello")
+            }
+          }
+          .navigationDestination(for: String.self) { str in
+            Text("String: \(str)")
+          }
+        }
+      }
+    }
+
+    let size = Size(width: 40, height: 8)
+    let view = NestedNavView()
+    let node = buildRootNode(view)
+    let (_, control) = try install(node: node, size: size)
+
+    // Directly manipulate the @State path by accessing its node state
+    // First find NestedNavView's node
+    let nestedNode = node.children[0]  // VStack wrapping -> NestedNavView ComposedView
+    // Push first value
+    var path = NavigationPath()
+    path.append(1)
+    nestedNode.state["_path"] = path
+    update(node: node, control: control, size: size)
+
+    let rendered1 = render(control: control, size: size)
+    XCTAssertTrue(rendered1.contains("Int: 1"), "After first push. Got: \(rendered1)")
+
+    // Push second value
+    path.append("hello")
+    nestedNode.state["_path"] = path
+    update(node: node, control: control, size: size)
+
+    let rendered2 = render(control: control, size: size)
+    XCTAssertTrue(rendered2.contains("String: hello"), "After second push. Got: \(rendered2)")
+  }
+
   // MARK: - Existing tests
 
   func test_navigationSplitView_routesSidebarLinkToDetail() throws {
@@ -239,6 +334,14 @@ final class NavigationTests: XCTestCase {
 
   private func moveDown(window: Window, rootControl: Control, size: Size) {
     guard let next = window.firstResponder?.selectableElement(below: 0) else { return }
+    window.firstResponder?.resignFirstResponder()
+    window.firstResponder = next
+    window.firstResponder?.becomeFirstResponder()
+    rootControl.layout(size: size)
+  }
+
+  private func moveUp(window: Window, rootControl: Control, size: Size) {
+    guard let next = window.firstResponder?.selectableElement(above: 0) else { return }
     window.firstResponder?.resignFirstResponder()
     window.firstResponder = next
     window.firstResponder?.becomeFirstResponder()

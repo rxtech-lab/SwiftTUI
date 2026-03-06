@@ -1,9 +1,17 @@
 import SwiftTUI
 
 struct ContentView: View {
+  @State private var path = NavigationPath()
+
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       PostListView()
+        .navigationDestination(for: Post.self) { post in
+          PostDetailView(post: post)
+        }
+        .navigationDestination(for: Comment.self) { comment in
+          CommentDetailView(comment: comment)
+        }
     }
   }
 }

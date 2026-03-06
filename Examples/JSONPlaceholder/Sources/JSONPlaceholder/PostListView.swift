@@ -13,7 +13,7 @@ struct PostListView: View {
       } else {
         List {
           ForEach(posts) { post in
-            NavigationLink(destination: PostDetailView(post: post)) {
+            NavigationLink(value: post) {
               Text("\(post.id). \(post.title)")
             }
           }

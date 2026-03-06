@@ -107,6 +107,9 @@ struct NavigationValueDestinationView: View, PrimitiveView {
     }
 
     node.removeNode(at: 0)
+    // Clear stale control so insertControl (triggered by addNode) walks
+    // into the freshly-built child instead of returning the old reference.
+    node.control = nil
     let env = node.resolveEnvironment()
     let view = env.navigationDestinationRegistry?.build(for: value) ?? Text("No destination").view
     node.addNode(at: 0, Node(view: view))
@@ -137,6 +140,7 @@ struct NavigationDestinationView: View, PrimitiveView {
     }
 
     node.removeNode(at: 0)
+    node.control = nil
     node.addNode(at: 0, Node(view: destination.buildView()))
     node.control = node.children[0].control(at: 0)
   }

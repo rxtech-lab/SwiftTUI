@@ -18,10 +18,11 @@ struct PostDetailView: View {
         Text("Comments (\(comments.count))").bold()
         List {
           ForEach(comments) { comment in
-            VStack(alignment: .leading) {
-              Text(comment.name).bold()
-              Text(comment.email).foregroundColor(.cyan)
-              Text(comment.body)
+            NavigationLink(value: comment) {
+              VStack(alignment: .leading) {
+                Text(comment.name).bold()
+                Text(comment.email).foregroundColor(.cyan)
+              }
             }
           }
         }
