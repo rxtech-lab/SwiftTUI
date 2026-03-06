@@ -332,7 +332,7 @@ final class LifecycleModifierTests: XCTestCase {
             await probe.recordStart(id: 0)
             // Wait until the test tells us the view has been removed.
             await gate.wait()
-            await probe.recordCancellation(id: 0)
+            await probe.recordCompletion(id: 0)
           }
         }
       }
@@ -352,8 +352,8 @@ final class LifecycleModifierTests: XCTestCase {
     await gate.open()
 
     // Wait for the task to finish without crashing.
-    let cancelled = await waitUntil { await probe.cancellationCount() == 1 }
-    XCTAssertTrue(cancelled)
+    let completed = await waitUntil { await probe.completionCount() == 1 }
+    XCTAssertTrue(completed)
   }
 
   func test_throwingTask_withID_handlesNonCancellationErrorWithoutCrash() async throws {
@@ -414,6 +414,7 @@ final class LifecycleModifierTests: XCTestCase {
 private actor TaskProbe {
   private var started: [Int] = []
   private var cancelled: [Int] = []
+  private var completed: [Int] = []
 
   func recordStart(id: Int) {
     started.append(id)
@@ -423,12 +424,20 @@ private actor TaskProbe {
     cancelled.append(id)
   }
 
+  func recordCompletion(id: Int) {
+    completed.append(id)
+  }
+
   func startCount() -> Int {
     started.count
   }
 
   func cancellationCount() -> Int {
     cancelled.count
+  }
+
+  func completionCount() -> Int {
+    completed.count
   }
 
   func startedIDs() -> [Int] {
