@@ -140,7 +140,8 @@ private class TaskControl: Control {
         // Silently ignore cancellation errors — this is expected when
         // the view is removed (e.g. navigating back) while the task is running.
       } catch {
-        // Silently ignore other errors thrown from the task action.
+        // Silently ignore other errors to match SwiftUI's .task behavior,
+        // where the framework has no mechanism to surface errors to the caller.
       }
     }
   }
