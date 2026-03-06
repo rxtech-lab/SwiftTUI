@@ -317,6 +317,45 @@ final class LifecycleModifierTests: XCTestCase {
     // If we reach here, the non-cancellation error was handled gracefully.
   }
 
+  func test_task_settingStateAfterViewRemoval_doesNotCrash() async throws {
+    let probe = TaskProbe()
+    let gate = AsyncGate()
+
+    struct TestView: View {
+      let show: Bool
+      let probe: TaskProbe
+      let gate: AsyncGate
+
+      var body: some View {
+        if show {
+          Text("hello").task {
+            await probe.recordStart(id: 0)
+            // Wait until the test tells us the view has been removed.
+            await gate.wait()
+            await probe.recordCancellation(id: 0)
+          }
+        }
+      }
+    }
+
+    let node = buildRootNode(TestView(show: true, probe: probe, gate: gate))
+    try layout(node)
+
+    let started = await waitUntil { await probe.startCount() == 1 }
+    XCTAssertTrue(started)
+
+    // Remove the view — the node is deallocated, making State's weak node ref nil.
+    updateRootNode(node, with: TestView(show: false, probe: probe, gate: gate))
+    try layout(node)
+
+    // Open the gate so the task continues and completes after view removal.
+    await gate.open()
+
+    // Wait for the task to finish without crashing.
+    let cancelled = await waitUntil { await probe.cancellationCount() == 1 }
+    XCTAssertTrue(cancelled)
+  }
+
   func test_throwingTask_withID_handlesNonCancellationErrorWithoutCrash() async throws {
     let probe = TaskProbe()
 
@@ -398,5 +437,25 @@ private actor TaskProbe {
 
   func cancelledIDs() -> [Int] {
     cancelled
+  }
+}
+
+private actor AsyncGate {
+  private var isOpen = false
+  private var continuations: [CheckedContinuation<Void, Never>] = []
+
+  func open() {
+    isOpen = true
+    for continuation in continuations {
+      continuation.resume()
+    }
+    continuations.removeAll()
+  }
+
+  func wait() async {
+    if isOpen { return }
+    await withCheckedContinuation { continuation in
+      continuations.append(continuation)
+    }
   }
 }
