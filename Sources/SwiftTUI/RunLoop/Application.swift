@@ -2,6 +2,8 @@ import Foundation
 
 #if os(macOS)
   import AppKit
+#elseif os(Windows)
+  import WinSDK
 #endif
 
 public class Application: @unchecked Sendable {
@@ -62,14 +64,16 @@ public class Application: @unchecked Sendable {
     stdInSource.resume()
     self.stdInSource = stdInSource
 
-    let sigWinChSource = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .main)
-    sigWinChSource.setEventHandler(qos: .default, flags: [], handler: self.handleWindowSizeChange)
-    sigWinChSource.resume()
+    #if !os(Windows)
+      let sigWinChSource = DispatchSource.makeSignalSource(signal: SIGWINCH, queue: .main)
+      sigWinChSource.setEventHandler(qos: .default, flags: [], handler: self.handleWindowSizeChange)
+      sigWinChSource.resume()
 
-    signal(SIGINT, SIG_IGN)
-    let sigIntSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-    sigIntSource.setEventHandler(qos: .default, flags: [], handler: self.stop)
-    sigIntSource.resume()
+      signal(SIGINT, SIG_IGN)
+      let sigIntSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+      sigIntSource.setEventHandler(qos: .default, flags: [], handler: self.stop)
+      sigIntSource.resume()
+    #endif
 
     switch runLoopType {
     case .dispatch:
@@ -84,11 +88,23 @@ public class Application: @unchecked Sendable {
     }
   }
 
+  #if os(Windows)
+    private var savedConsoleMode: DWORD = 0
+  #endif
+
   private func setInputMode() {
-    var tattr = termios()
-    tcgetattr(STDIN_FILENO, &tattr)
-    tattr.c_lflag &= ~tcflag_t(ECHO | ICANON)
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &tattr)
+    #if os(Windows)
+      let hStdIn = GetStdHandle(STD_INPUT_HANDLE)
+      GetConsoleMode(hStdIn, &savedConsoleMode)
+      var mode = savedConsoleMode
+      mode &= ~DWORD(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT)
+      SetConsoleMode(hStdIn, mode)
+    #else
+      var tattr = termios()
+      tcgetattr(STDIN_FILENO, &tattr)
+      tattr.c_lflag &= ~tcflag_t(ECHO | ICANON)
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tattr)
+    #endif
   }
 
   private func handleInput() {
@@ -223,15 +239,32 @@ public class Application: @unchecked Sendable {
   }
 
   private func updateWindowSize() {
-    var size = winsize()
-    guard ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &size) == 0,
-      size.ws_col > 0, size.ws_row > 0
-    else {
-      assertionFailure("Could not get window size")
-      return
-    }
-    window.layer.frame.size = Size(
-      width: Extended(Int(size.ws_col)), height: Extended(Int(size.ws_row)))
+    #if os(Windows)
+      var csbi = CONSOLE_SCREEN_BUFFER_INFO()
+      let hStdOut = GetStdHandle(STD_OUTPUT_HANDLE)
+      guard GetConsoleScreenBufferInfo(hStdOut, &csbi) else {
+        assertionFailure("Could not get window size")
+        return
+      }
+      let cols = Int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+      let rows = Int(csbi.srWindow.Bottom - csbi.srWindow.Top + 1)
+      guard cols > 0, rows > 0 else {
+        assertionFailure("Could not get window size")
+        return
+      }
+      window.layer.frame.size = Size(
+        width: Extended(cols), height: Extended(rows))
+    #else
+      var size = winsize()
+      guard ioctl(STDOUT_FILENO, UInt(TIOCGWINSZ), &size) == 0,
+        size.ws_col > 0, size.ws_row > 0
+      else {
+        assertionFailure("Could not get window size")
+        return
+      }
+      window.layer.frame.size = Size(
+        width: Extended(Int(size.ws_col)), height: Extended(Int(size.ws_row)))
+    #endif
     renderer.setCache()
   }
 
@@ -243,11 +276,15 @@ public class Application: @unchecked Sendable {
 
   /// Fix for: https://github.com/rensbreur/SwiftTUI/issues/25
   private func resetInputMode() {
-    // Reset ECHO and ICANON values:
-    var tattr = termios()
-    tcgetattr(STDIN_FILENO, &tattr)
-    tattr.c_lflag |= tcflag_t(ECHO | ICANON)
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &tattr)
+    #if os(Windows)
+      let hStdIn = GetStdHandle(STD_INPUT_HANDLE)
+      SetConsoleMode(hStdIn, savedConsoleMode)
+    #else
+      var tattr = termios()
+      tcgetattr(STDIN_FILENO, &tattr)
+      tattr.c_lflag |= tcflag_t(ECHO | ICANON)
+      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tattr)
+    #endif
   }
 
 }

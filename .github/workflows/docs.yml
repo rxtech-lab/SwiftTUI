@@ -2,7 +2,6 @@ name: Documentation
 
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -24,7 +23,9 @@ jobs:
           swift-version: '6.2'
       - name: Build documentation
         run: |
-          swift package generate-documentation \
+          swift package \
+            --allow-writing-to-directory docs \
+            generate-documentation \
             --target SwiftTUI \
             --disable-indexing \
             --transform-for-static-hosting \
@@ -38,6 +39,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ github.event.deployment.payload.web_url || steps.deployment.outputs.page_url }}
