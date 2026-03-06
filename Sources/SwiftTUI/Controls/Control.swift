@@ -12,7 +12,11 @@ class Control: LayerDrawing {
   private(set) lazy var layer: Layer = makeLayer()
   var selectionTag: AnyHashable?
   var prefersDefaultFocus: Bool = true
-  var toolbarEntries: [ToolbarEntry] = []
+  var toolbarEntries: [ToolbarEntry] = [] {
+    didSet {
+      toolbarEntriesDidChange()
+    }
+  }
 
   var root: Control { parent?.root ?? self }
 
@@ -141,6 +145,8 @@ class Control: LayerDrawing {
     }
     return entries
   }
+
+  func toolbarEntriesDidChange() {}
 
   // MARK: - Selection
 

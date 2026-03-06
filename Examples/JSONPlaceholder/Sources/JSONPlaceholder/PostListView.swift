@@ -20,6 +20,11 @@ struct PostListView: View {
         }
       }
     }
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Text(isLoading ? "Loading..." : "\(posts.count) posts")
+      }
+    }
     .task {
       do {
         let fetched = try await APIClient.fetchPosts()

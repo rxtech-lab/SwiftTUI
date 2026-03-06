@@ -11,5 +11,10 @@ struct CommentDetailView: View {
       Divider()
       Text(comment.body)
     }
+    .toolbar {
+      ToolbarItem(placement: .primaryAction) {
+        Text("Comment #\(comment.id)")
+      }
+    }
   }
 }
