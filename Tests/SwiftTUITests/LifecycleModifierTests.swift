@@ -205,6 +205,145 @@ final class LifecycleModifierTests: XCTestCase {
     XCTAssertTrue(cancelled)
   }
 
+  // MARK: - Throwing task tests
+
+  func test_throwingTask_ignoresCancellationErrorWhenViewDisappears() async throws {
+    let probe = TaskProbe()
+
+    struct TestView: View {
+      let show: Bool
+      let probe: TaskProbe
+
+      var body: some View {
+        if show {
+          Text("Value").task {
+            await probe.recordStart(id: 0)
+            // Simulate a long-running async operation that throws CancellationError
+            // when the task is cancelled (e.g. navigating back).
+            try await Task.sleep(nanoseconds: 10_000_000_000)
+            // If we get here, the task wasn't cancelled
+          }
+        }
+      }
+    }
+
+    let node = buildRootNode(TestView(show: true, probe: probe))
+    try layout(node)
+
+    let started = await waitUntil { await probe.startCount() == 1 }
+    XCTAssertTrue(started)
+
+    // Remove the view while the task is still running — this cancels the task,
+    // which causes Task.sleep to throw CancellationError. The framework should
+    // catch this silently instead of crashing.
+    updateRootNode(node, with: TestView(show: false, probe: probe))
+    try layout(node)
+
+    // Give time for the cancellation to propagate
+    try? await Task.sleep(nanoseconds: 50_000_000)
+
+    // If we reach here without crashing, the CancellationError was handled correctly.
+  }
+
+  func test_throwingTask_withID_ignoresCancellationErrorWhenIDChanges() async throws {
+    let probe = TaskProbe()
+
+    struct TestView: View {
+      let show: Bool
+      let id: Int
+      let probe: TaskProbe
+
+      var body: some View {
+        if show {
+          Text("Value \(id)").task(id: id) {
+            await probe.recordStart(id: id)
+            // Simulate a long-running operation that throws when cancelled
+            try await Task.sleep(nanoseconds: 10_000_000_000)
+          }
+        }
+      }
+    }
+
+    let node = buildRootNode(TestView(show: true, id: 1, probe: probe))
+    try layout(node)
+
+    let didStartFirst = await waitUntil { await probe.startedIDs() == [1] }
+    XCTAssertTrue(didStartFirst)
+
+    // Change the ID — this cancels the previous task and starts a new one.
+    // The old task's CancellationError should be silently handled.
+    updateRootNode(node, with: TestView(show: true, id: 2, probe: probe))
+    try layout(node)
+
+    let didRestart = await waitUntil { await probe.startCount() == 2 }
+    XCTAssertTrue(didRestart)
+    let startedIDs = await probe.startedIDs()
+    XCTAssertEqual(startedIDs, [1, 2])
+
+    // Remove the view entirely to cancel the second task as well
+    updateRootNode(node, with: TestView(show: false, id: 2, probe: probe))
+    try layout(node)
+
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    // If we reach here, both CancellationErrors were handled correctly.
+  }
+
+  func test_throwingTask_handlesNonCancellationErrorWithoutCrash() async throws {
+    let probe = TaskProbe()
+
+    struct SomeError: Error {}
+
+    struct TestView: View {
+      let probe: TaskProbe
+
+      var body: some View {
+        Text("Value").task {
+          await probe.recordStart(id: 0)
+          // Throw a non-cancellation error; the framework should catch this
+          // silently without crashing.
+          throw SomeError()
+        }
+      }
+    }
+
+    let node = buildRootNode(TestView(probe: probe))
+    try layout(node)
+
+    let started = await waitUntil { await probe.startCount() == 1 }
+    XCTAssertTrue(started)
+
+    // Give time for the error to be thrown and caught
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    // If we reach here, the non-cancellation error was handled gracefully.
+  }
+
+  func test_throwingTask_withID_handlesNonCancellationErrorWithoutCrash() async throws {
+    let probe = TaskProbe()
+
+    struct SomeError: Error {}
+
+    struct TestView: View {
+      let id: Int
+      let probe: TaskProbe
+
+      var body: some View {
+        Text("Value \(id)").task(id: id) {
+          await probe.recordStart(id: id)
+          throw SomeError()
+        }
+      }
+    }
+
+    let node = buildRootNode(TestView(id: 1, probe: probe))
+    try layout(node)
+
+    let started = await waitUntil { await probe.startCount() == 1 }
+    XCTAssertTrue(started)
+
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    // If we reach here, the error was handled gracefully.
+  }
+
   private func buildRootNode<V: View>(_ view: V) -> Node {
     let node = Node(view: VStack(content: view).view)
     node.build()

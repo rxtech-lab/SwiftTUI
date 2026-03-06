@@ -7,9 +7,22 @@ extension View {
     TaskModifier(content: self, priority: priority, action: action)
   }
 
+  public func task(
+    priority: TaskPriority = .userInitiated, _ action: @escaping @Sendable () async throws -> Void
+  ) -> some View {
+    TaskModifier(content: self, priority: priority, action: action)
+  }
+
   public func task<T: Equatable>(
     id value: T, priority: TaskPriority = .userInitiated,
     _ action: @escaping @Sendable () async -> Void
+  ) -> some View {
+    TaskIDModifier(content: self, id: value, priority: priority, action: action)
+  }
+
+  public func task<T: Equatable>(
+    id value: T, priority: TaskPriority = .userInitiated,
+    _ action: @escaping @Sendable () async throws -> Void
   ) -> some View {
     TaskIDModifier(content: self, id: value, priority: priority, action: action)
   }
@@ -18,7 +31,7 @@ extension View {
 private struct TaskModifier<Content: View>: View, PrimitiveView, ModifierView {
   let content: Content
   let priority: TaskPriority
-  let action: @Sendable () async -> Void
+  let action: @Sendable () async throws -> Void
 
   static var size: Int? { Content.size }
 
@@ -50,7 +63,7 @@ private struct TaskIDModifier<Content: View, ID: Equatable>: View, PrimitiveView
   let content: Content
   let id: ID
   let priority: TaskPriority
-  let action: @Sendable () async -> Void
+  let action: @Sendable () async throws -> Void
 
   static var size: Int? { Content.size }
 
@@ -81,12 +94,12 @@ private struct TaskIDModifier<Content: View, ID: Equatable>: View, PrimitiveView
 
 private class TaskControl: Control {
   var priority: TaskPriority
-  var action: @Sendable () async -> Void
+  var action: @Sendable () async throws -> Void
 
   fileprivate var didAppear = false
   private var runningTask: Task<Void, Never>?
 
-  init(priority: TaskPriority, action: @escaping @Sendable () async -> Void) {
+  init(priority: TaskPriority, action: @escaping @Sendable () async throws -> Void) {
     self.priority = priority
     self.action = action
   }
@@ -121,7 +134,14 @@ private class TaskControl: Control {
 
   private func startTask() {
     runningTask = Task(priority: priority) { [action] in
-      await action()
+      do {
+        try await action()
+      } catch is CancellationError {
+        // Silently ignore cancellation errors — this is expected when
+        // the view is removed (e.g. navigating back) while the task is running.
+      } catch {
+        // Silently ignore other errors thrown from the task action.
+      }
     }
   }
 }
@@ -129,7 +149,7 @@ private class TaskControl: Control {
 private final class TaskIDControl<ID: Equatable>: TaskControl {
   private var id: ID
 
-  init(id: ID, priority: TaskPriority, action: @escaping @Sendable () async -> Void) {
+  init(id: ID, priority: TaskPriority, action: @escaping @Sendable () async throws -> Void) {
     self.id = id
     super.init(priority: priority, action: action)
   }
