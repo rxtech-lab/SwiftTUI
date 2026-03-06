@@ -21,7 +21,6 @@ public struct State<T>: AnyState {
             guard let node = valueReference.node,
                   let label = valueReference.label
             else {
-                assertionFailure("Attempting to access @State variable before view is instantiated")
                 return initialValue
             }
             if let value = node.state[label] {
@@ -33,7 +32,6 @@ public struct State<T>: AnyState {
             guard let node = valueReference.node,
                   let label = valueReference.label
             else {
-                assertionFailure("Attempting to modify @State variable before view is instantiated")
                 return
             }
             node.state[label] = newValue
