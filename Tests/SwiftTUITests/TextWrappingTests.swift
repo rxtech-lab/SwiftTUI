@@ -259,6 +259,69 @@ final class TextWrappingTests: XCTestCase {
     XCTAssertTrue(rendered.contains("Goodbye"))
   }
 
+  // MARK: - Newline handling
+
+  func test_textSplitsOnNewline() throws {
+    struct MyView: View {
+      var body: some View {
+        VStack {
+          Text("Line1\nLine2\nLine3")
+        }
+      }
+    }
+
+    let size = Size(width: 20, height: 5)
+    let (_, control) = try install(MyView(), size: size)
+    let lines = renderLines(control: control, size: size)
+
+    XCTAssertTrue(lines[0].contains("Line1"), "First line should contain 'Line1'. Got: \(lines[0])")
+    XCTAssertTrue(
+      lines[1].contains("Line2"), "Second line should contain 'Line2'. Got: \(lines[1])")
+    XCTAssertTrue(lines[2].contains("Line3"), "Third line should contain 'Line3'. Got: \(lines[2])")
+  }
+
+  func test_textNewline_sizeIncludesAllLines() throws {
+    struct MyView: View {
+      var body: some View {
+        VStack {
+          Text("AB\nCD")
+        }
+      }
+    }
+
+    let size = Size(width: 20, height: 5)
+    let (_, control) = try install(MyView(), size: size)
+    let lines = renderLines(control: control, size: size)
+
+    XCTAssertTrue(lines[0].contains("AB"))
+    XCTAssertTrue(lines[1].contains("CD"))
+    // Ensure newline character itself is NOT rendered
+    XCTAssertFalse(lines[0].contains("\n"))
+  }
+
+  func test_textNewline_doesNotRenderNewlineCharacter() throws {
+    struct MyView: View {
+      var body: some View {
+        VStack {
+          Text("Hello\nWorld")
+        }
+      }
+    }
+
+    let size = Size(width: 40, height: 5)
+    let (_, control) = try install(MyView(), size: size)
+
+    // Check that no cell returns a newline character
+    for line in 0..<5 {
+      for col in 0..<40 {
+        let cell = control.layer.cell(at: Position(column: Extended(col), line: Extended(line)))
+        if let cell {
+          XCTAssertNotEqual(cell.char, "\n", "Cell at (\(col), \(line)) should not contain newline")
+        }
+      }
+    }
+  }
+
   // MARK: - Helpers
 
   private func buildNode<V: View>(_ view: V) -> Node {

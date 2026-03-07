@@ -150,6 +150,46 @@ final class NavigationTests: XCTestCase {
     XCTAssertFalse(rendered.contains("Back"))
   }
 
+  func test_navigation_clears_old_content_after_push() throws {
+    let size = Size(width: 40, height: 10)
+    let node = buildRootNode(
+      NavigationStack {
+        VStack {
+          Text("ItemAlpha")
+          Text("ItemBeta")
+          Text("ItemGamma")
+          NavigationLink("GoToDetail", destination: Text("DetailOnly"))
+        }
+      }
+    )
+
+    let (window, control) = try install(node: node, size: size)
+
+    // Verify list content is visible before navigation
+    let beforePush = render(control: control, size: size)
+    XCTAssertTrue(beforePush.contains("ItemAlpha"))
+    XCTAssertTrue(beforePush.contains("ItemBeta"))
+    XCTAssertTrue(beforePush.contains("ItemGamma"))
+    XCTAssertTrue(beforePush.contains("GoToDetail"))
+
+    // Push to detail
+    window.firstResponder?.handleEvent("\n")
+    update(node: node, control: control, size: size)
+
+    // Verify old list content is gone and detail is shown
+    let afterPush = render(control: control, size: size)
+    XCTAssertTrue(afterPush.contains("DetailOnly"), "Detail should be visible. Got: \(afterPush)")
+    XCTAssertFalse(
+      afterPush.contains("ItemAlpha"),
+      "Old list item 'ItemAlpha' should not appear after push. Got: \(afterPush)")
+    XCTAssertFalse(
+      afterPush.contains("ItemBeta"),
+      "Old list item 'ItemBeta' should not appear after push. Got: \(afterPush)")
+    XCTAssertFalse(
+      afterPush.contains("ItemGamma"),
+      "Old list item 'ItemGamma' should not appear after push. Got: \(afterPush)")
+  }
+
   // MARK: - NavigationPath tests
 
   func test_navigationPath_appendAndCount() {

@@ -34,6 +34,13 @@ class Renderer {
     }
   }
 
+  func cacheCell(at position: Position) -> Cell? {
+    let line = position.line.intValue
+    let column = position.column.intValue
+    guard line >= 0, line < cache.count, column >= 0, column < cache[line].count else { return nil }
+    return cache[line][column]
+  }
+
   func setCache() {
     cache = .init(
       repeating: .init(repeating: nil, count: layer.frame.size.width.intValue),
@@ -51,9 +58,10 @@ class Renderer {
     for line in rect.minLine.intValue...rect.maxLine.intValue {
       for column in rect.minColumn.intValue...rect.maxColumn.intValue {
         let position = Position(column: Extended(column), line: Extended(line))
-        if let cell = layer.cell(at: position) {
-          drawPixel(cell, at: Position(column: Extended(column), line: Extended(line)))
-        }
+        let cell =
+          layer.cell(at: position)
+          ?? Cell(char: " ", foregroundColor: .default, backgroundColor: .default)
+        drawPixel(cell, at: Position(column: Extended(column), line: Extended(line)))
       }
     }
   }
